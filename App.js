@@ -26,6 +26,7 @@ const App = () => {
     const [appState, setAppState] = React.useState('');
     const [scanning, setScanning] = React.useState(false);
     const [peripherals, setPeripherals] = React.useState(new Map());
+    const [time, setTime] = React.useState(15);
     const handleAppStateChange = (nextAppState) => {
         if (appState.match(/inactive|background/) && nextAppState === 'active') {
             console.log('App has come to the foreground!');
@@ -36,8 +37,9 @@ const App = () => {
         setAppState(nextAppState)
 
     };
+
     function getBluetoothScanPermission() {
-        const granted =  PermissionsAndroid.request(
+        const granted = PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
             {
                 title: 'Bluetooth Permission',
@@ -47,7 +49,7 @@ const App = () => {
                     'use Bluetooth to scan your environment for peripherals.',
                 buttonPositive: 'OK'
             },
-        ).then(e=>{
+        ).then(e => {
             console.log(e)
 
         }).catch((e) => {
@@ -58,19 +60,20 @@ const App = () => {
         })
 
     }
-    React.useEffect(  ()=> {
+
+    React.useEffect(() => {
 
 
-            getBluetoothScanPermission()
+        getBluetoothScanPermission()
 
         return function () {
             console.log('tadam')
         }
 
 
-    },[] )
-    React.useEffect( () => {
-        BleManager.start({showAlert: false,forceLegacy: true}).then(e => console.log(e));
+    }, [])
+    React.useEffect(() => {
+        BleManager.start({showAlert: false, forceLegacy: true}).then(e => console.log(e));
         AppState.addEventListener('change', handleAppStateChange);
 
         const handlerDiscover = bleManagerEmitter.addListener('BleManagerDiscoverPeripheral', handleDiscoverPeripheral);
@@ -117,11 +120,22 @@ const App = () => {
     const scanStart = () => {
         if (!scanning) {
             //this.setState({peripherals: new Map()});
-            BleManager.scan([], 30).then((results) => {
+            BleManager.scan([], time).then((results) => {
                 console.log('Scanning...');
                 setScanning(true)
             });
         }
+        let a = time
+        const interval = setInterval(() => {
+
+            a--;
+            setTime(a)
+            console.log(a)
+            if (a === 0) {
+                clearInterval(interval)
+                setTime(15)
+            }
+        }, 1000)
     };
     const handleStopScan = () => {
         console.log('Scan is stopped');
@@ -134,7 +148,7 @@ const App = () => {
             peripheral.name = 'NO NAME';
         }
         if (peripheral && peripheral.id) {
-            console.log('xxx', peripheral)
+            // console.log('xxx', peripheral)
             peripheralsLocal.set(peripheral.id, peripheral);
             setPeripherals(peripheralsLocal)
 
@@ -149,42 +163,53 @@ const App = () => {
             console.log(peripherals)
         });
         retrieveConnected()
-        console.log('lista',list)
+        console.log('lista', list)
     };
 
-     const  renderItem = (item) =>{
-    const color = item.connected ? 'green' : '#fff';
-    return (
-        <TouchableHighlight  >
-          <View style={[styles.row, {backgroundColor: color}]}>
-            <Text style={{fontSize: 12, textAlign: 'center', color: '#333333', padding: 10}}>{item.name}</Text>
-            <Text style={{fontSize: 10, textAlign: 'center', color: '#333333', padding: 2}}>RSSI: {item.rssi}</Text>
-            <Text style={{fontSize: 8, textAlign: 'center', color: '#333333', padding: 2, paddingBottom: 20}}>{item.id}</Text>
-          </View>
-        </TouchableHighlight>
-    );
-  }
+    const renderItem = (item) => {
+        const color = item.connected ? 'green' : '#fff';
+        return (
+            <TouchableHighlight>
+                <View style={[styles.row, {backgroundColor: color}]}>
+                    <Text style={{fontSize: 12, textAlign: 'center', color: '#333333', padding: 10}}>{item.name}</Text>
+                    <Text style={{
+                        fontSize: 10,
+                        textAlign: 'center',
+                        color: '#333333',
+                        padding: 2
+                    }}>RSSI: {item.rssi}</Text>
+                    <Text style={{
+                        fontSize: 8,
+                        textAlign: 'center',
+                        color: '#333333',
+                        padding: 2,
+                        paddingBottom: 20
+                    }}>{item.id}</Text>
+                </View>
+            </TouchableHighlight>
+        );
+    }
 
     return (
         <>
             <View style={{margin: 10, padding: 10}}>
 
-                <Button title={'Scan'} onPress={scanStart}/>
+                <Button title={`Scan ${time}`} onPress={scanStart}/>
             </View>
             <View style={{margin: 10, padding: 10}}>
                 <Button title={`Scan ${scanning ? 'on' : 'off'}`} onPress={printPer}/>
             </View>
             <View>
-                <Text style={{textAlign:'center', fontSize:30}}>
+                <Text style={{textAlign: 'center', fontSize: 30}}>
                     0.000
                 </Text>
             </View>
             <ScrollView style={styles.scroll}>
-                               {(peripherals.length === 0) &&
-                          <View style={{flex: 1, margin: 20}}>
-                              <Text style={{textAlign: 'center'}}>No peripherals</Text>
-                          </View>
-                               }
+                {(peripherals.length === 0) &&
+                <View style={{flex: 1, margin: 20}}>
+                    <Text style={{textAlign: 'center'}}>No peripherals</Text>
+                </View>
+                }
                 <FlatList
                     data={list}
                     renderItem={({item}) => renderItem(item)}
