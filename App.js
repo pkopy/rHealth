@@ -2,6 +2,7 @@ import React, {Component} from 'react';
 import {
     StyleSheet,
     Text,
+    TextInput,
     View,
     TouchableHighlight,
     NativeEventEmitter,
@@ -14,6 +15,7 @@ import {
     Dimensions,
     Button,
     SafeAreaView,
+    Image
 } from 'react-native';
 import BleManager from 'react-native-ble-manager';
 
@@ -27,7 +29,12 @@ const App = () => {
     const [scanning, setScanning] = React.useState(false);
     const [peripherals, setPeripherals] = React.useState(new Map());
     const [time, setTime] = React.useState(15);
-    const [mass, setMass] = React.useState('0.00')
+    const [mass, setMass] = React.useState('-----')
+    const [connected, setConnected] = React.useState(false)
+    const [massAsNumber, setMassAsNumber] = React.useState(0)
+    const [value, onChangeText] = React.useState(1);
+    const [left, setLeft] =React.useState(false)
+    const [unit, setUnit] = React.useState('')
     const handleAppStateChange = (nextAppState) => {
         if (appState.match(/inactive|background/) && nextAppState === 'active') {
             console.log('App has come to the foreground!');
@@ -73,6 +80,22 @@ const App = () => {
 
 
     }, []);
+    React.useEffect(()=> {
+        console.log(mass)
+        if (!mass.includes('?')) {
+            console.log('stable')
+        }
+        let str = mass.slice(5, mass.length-1).trimStart()
+        let sp = str.indexOf(' ')
+        console.log(sp)
+        let unit = str.slice(sp, str.length-1)
+        setUnit(unit)
+        let number = str.slice(0,sp) * 1
+        console.log(number)
+        setMassAsNumber(number)
+    },[mass])
+
+
     React.useEffect(() => {
         BleManager.start({showAlert: false, forceLegacy: true}).then(e => console.log(e));
         AppState.addEventListener('change', handleAppStateChange);
@@ -167,6 +190,7 @@ const App = () => {
                 p.connected = true;
                 peripherals1.set(peripheral.id, p);
                 setPeripherals(peripherals1);
+                setConnected(true)
             }
 
             setTimeout(() => {
@@ -200,7 +224,9 @@ const App = () => {
             console.log(err);
         });
     };
-
+    const con = () => {
+        console.log('click')
+    }
     const list = Array.from(peripherals.values());
     const printPer = () => {
         // peripherals.set({oko:12})
@@ -213,45 +239,78 @@ const App = () => {
         console.log('lista', list);
     };
 
+    const setLeftf = () => {
+        setLeft(true)
+    }
+
     const renderItem = (item) => {
         const color = item.connected ? 'green' : '#fff';
         return (
             <TouchableHighlight onPress={() => connect(item)}>
+
                 <View style={[styles.row, {backgroundColor: color}]}>
-                    <Text style={{fontSize: 12, textAlign: 'center', color: '#333333', padding: 10}}>{item.name}</Text>
-                    <Text style={{
-                        fontSize: 10,
-                        textAlign: 'center',
-                        color: '#333333',
-                        padding: 2,
-                    }}>RSSI: {item.rssi}</Text>
-                    <Text style={{
-                        fontSize: 8,
-                        textAlign: 'center',
-                        color: '#333333',
-                        padding: 2,
-                        paddingBottom: 20,
-                    }}>{item.id}</Text>
-                </View>
+                    <View style={{
+                        flexDirection:'row'
+                    }}>
+                        <View >
+                            <Image
+
+                                source={require('./c315.png')}
+                                style={styles.c315}
+                            />
+                        </View>
+                        <View>
+                            <Text style={{fontSize: 12, textAlign: 'center', color: '#333333', padding: 10}}>{item.name}</Text>
+                            <Text style={{
+                                fontSize: 10,
+                                textAlign: 'center',
+                                color: '#333333',
+                                padding: 2,
+                            }}>RSSI: {item.rssi}</Text>
+                            <Text style={{
+                                fontSize: 8,
+                                textAlign: 'center',
+                                color: '#333333',
+                                padding: 2,
+                                paddingBottom: 20,
+                            }}>{item.id}</Text>
+                        </View>
+
+                    </View>
+                    </View>
+
             </TouchableHighlight>
         );
     };
 
     return (
         <>
-            <View style={{margin: 10, padding: 10}}>
+            {!connected&&<View style={{margin: 10, padding: 10}}>
 
-                <Button title={`Scan ${time}`} onPress={scanStart}/>
-            </View>
-            <View style={{margin: 10, padding: 10}}>
+                <Button title={`Scan ${time}`} onPress={scanStart} disabled={scanning}/>
+            </View>}
+
+            {!connected&&<View style={{margin: 10, padding: 10}}>
                 <Button title={`Scan ${scanning ? 'on' : 'off'}`} onPress={printPer}/>
+            </View>}
+            <View>
+                {connected&&<Text style={{textAlign: 'center', fontSize: 60, fontWeight: 'bold'}}>
+                    {massAsNumber.toFixed(2)}
+
+                <Text style={{textAlign: 'center', fontSize: 14, fontWeight: 'bold'}}>
+                    {unit}
+                </Text>
+                </Text>}
             </View>
             <View>
-                <Text style={{textAlign: 'center', fontSize: 30}}>
-                    {mass}
-                </Text>
+                {connected&&<Text style={{textAlign: 'center', fontSize: 60, fontWeight: 'bold'}}>
+                    {(massAsNumber/((value/100)*(value/100))).toFixed(2)}
+                    <Text style={{textAlign: 'center', fontSize: 14, fontWeight: 'bold'}}>
+                        BMI
+                    </Text>
+                </Text>}
             </View>
-            <ScrollView style={styles.scroll}>
+            {!connected&&<ScrollView style={styles.scroll}>
                 {(peripherals.length === 0) &&
                 <View style={{flex: 1, margin: 20}}>
                     <Text style={{textAlign: 'center'}}>No peripherals</Text>
@@ -263,7 +322,31 @@ const App = () => {
                     keyExtractor={item => item.id}
                 />
 
-            </ScrollView>
+            </ScrollView>}
+            {connected&&<View  style={{width:'80%', marginLeft:'auto', marginRight:'auto'}}>
+                <Image onPress={con}
+                    source={require('./c315.png')}
+
+                />
+            </View>}
+            <View>
+                <TextInput
+                    style={{ height: 40, borderColor: 'gray', borderWidth: 1 }}
+                    onChangeText={text => onChangeText(text)}
+                    value={value}
+                    keyboardType={'number-pad'}
+                />
+            </View>
+            {left&&<View>
+                <Image onPress={con}
+                       source={require('./pz1.png')}
+
+                />
+            </View>}
+
+
+
+
 
             {/*<View>*/}
 
@@ -528,6 +611,12 @@ const styles = StyleSheet.create({
     row: {
         margin: 10,
     },
+    c315: {
+        width:100,
+        height:100,
+
+
+    }
 });
 
 
